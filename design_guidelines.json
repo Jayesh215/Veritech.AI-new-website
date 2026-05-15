@@ -1,0 +1,108 @@
+{
+  "theme": "Dark",
+  "archetype": "Archetype 4: Swiss & High-Contrast (Linear/Vercel Aesthetic with Premium Obsidian Edge)",
+  "colors": {
+    "background": {
+      "base": "#050505",
+      "surface": "#0C0C0C",
+      "card": "#121212"
+    },
+    "text": {
+      "primary": "#F4F4F5",
+      "secondary": "#A1A1AA",
+      "muted": "#52525B"
+    },
+    "border": {
+      "default": "#27272A",
+      "hover": "#3F3F46"
+    },
+    "accent": {
+      "primary": "#F55036",
+      "primary_hover": "#E04830",
+      "glow": "rgba(245, 80, 54, 0.15)",
+      "gradient_start": "#F55036",
+      "gradient_end": "#FFA07A"
+    }
+  },
+  "typography": {
+    "strategy": "Swiss Brutalist meets Old Money Tech - avoiding generic sans",
+    "font_families": {
+      "heading": "Cabinet Grotesk, ui-sans-serif, system-ui, sans-serif",
+      "body": "Manrope, ui-sans-serif, system-ui, sans-serif",
+      "accent": "JetBrains Mono, ui-monospace, monospace"
+    },
+    "scales": {
+      "h1": "text-5xl md:text-6xl lg:text-7xl tracking-tighter leading-none font-medium",
+      "h2": "text-3xl md:text-4xl lg:text-5xl tracking-tight leading-tight font-medium",
+      "h3": "text-xl md:text-2xl tracking-tight leading-snug font-medium",
+      "body": "text-base md:text-lg leading-relaxed text-zinc-400",
+      "overline": "text-xs tracking-[0.2em] uppercase font-bold text-[#F55036]"
+    }
+  },
+  "layout_spacing": {
+    "grid_strategy": "Bento Grid (Mode A & B hybrid) - Dense, 1px borders, structural.",
+    "container": "max-w-7xl mx-auto px-6 md:px-12",
+    "section_spacing": "py-24 md:py-32",
+    "component_padding": "p-8 md:p-12"
+  },
+  "visual_enhancers": {
+    "surfaces": "Grid Borders (Technical Look) - 1px borders, no shadows, extremely minimal.",
+    "glassmorphism": "Only for sticky header/nav and testimonials: backdrop-blur-2xl bg-[#050505]/60 border border-white/10.",
+    "gradients": "Minimal use. Focus on solid lines and subtle glowing borders over flat surfaces. NO purple/blue.",
+    "effects": "The 'Tracing Beam' on key feature cards (projects/services). Subtle ember orange glows on hover."
+  },
+  "components_strategy": {
+    "buttons": "Sharp corners (rounded-none or rounded-sm), solid accent color or transparent with 1px border. Deep contrast on hover.",
+    "cards": "Flat background (#0C0C0C), 1px solid border (#27272A). Inner padding p-8. No standard drop shadows.",
+    "icons": "Use lucide-react (stroke-width 1.5). For tech logos, use react-icons/si.",
+    "marquee": "Use react-fast-marquee. 'Kinetic Texture' style for tech stack - clean monochrome tech logos.",
+    "timeline": "5-step vertical line with glowing dot indicators for the Development Process section."
+  },
+  "motion": {
+    "transitions": "transition-all duration-300 ease-out",
+    "hover_states": "Border color shifts to accent, slight background lighten, NO wild scaling.",
+    "scroll": "Smooth scrolling via lenis required."
+  },
+  "image_urls": [
+    {
+      "id": "hero_visual",
+      "category": "hero",
+      "url": "https://static.prod-images.emergentagent.com/jobs/3db90e78-36cd-4f39-8bf5-0f18091d5b8b/images/6c38721ca6ebd01e612e876426b44ed5f83bc06119341bac15455966554d5344.png",
+      "description": "Abstract architectural 3D render of a floating glass monolith with glowing ember-orange wireframe lines"
+    },
+    {
+      "id": "about_company",
+      "category": "about",
+      "url": "https://static.prod-images.emergentagent.com/jobs/3db90e78-36cd-4f39-8bf5-0f18091d5b8b/images/74254e3109394e1786952cf1879eb71903af9c7d87d4bcd4e1d73dfa4ea72acc.png",
+      "description": "Dark cinematic modern office / server room"
+    },
+    {
+      "id": "project_saas",
+      "category": "projects",
+      "url": "https://static.prod-images.emergentagent.com/jobs/3db90e78-36cd-4f39-8bf5-0f18091d5b8b/images/f129196f47ce3a76d1d17eb9e9221d254f4ca42945c861926988f6532ff96d0d.png",
+      "description": "Abstract dashboard SaaS project"
+    },
+    {
+      "id": "project_ai",
+      "category": "projects",
+      "url": "https://static.prod-images.emergentagent.com/jobs/3db90e78-36cd-4f39-8bf5-0f18091d5b8b/images/f9dd96a626a5a1f4317f4e980f9dca53e11dca009cb3768a9062991faa606576.png",
+      "description": "Abstract neural network AI nodes"
+    }
+  ],
+  "instructions_to_main_agent": [
+    "Strictly avoid any purple, violet, or cyan gradients (AI slop). Rely on Obsidian Black backgrounds with pure white text and singular Ember Orange (#F55036) accents.",
+    "Use 'react-icons/si' for the Tech Stack logos in the sliders/marquees. Install the package if missing.",
+    "Implement 'Cabinet Grotesk' for Headings, 'Manrope' for Body, and 'JetBrains Mono' for small overlines. Import them properly in CSS or index.html.",
+    "Hero Section: Use a dark grid background texture. Place the 'hero_visual' prominently. Use glassmorphism overlays if text overlaps.",
+    "Services Bento Grid: Use 'Mode A: The Tetris Grid'. 1px borders (border-white/10), flat #0A0A0A backgrounds.",
+    "Testimonials: Implement auto-scroll glassmorphism cards (backdrop-blur-md bg-white/5 border border-white/10).",
+    "Use Framer Motion for entrance animations (staggered fade-up) and Lenis for smooth scrolling.",
+    "All interactive elements MUST have 'data-testid' attributes (e.g., data-testid='hero-cta-button').",
+    "Contact Form: Implement with Shadcn UI components (Input, Textarea, Button).",
+    "Ensure maximum contrast. Do not use generic drop shadows, rely on 1px borders and opacity shifts instead."
+  ],
+  "accessibility": {
+    "focus_states": "focus:ring-2 focus:ring-[#F55036] focus:outline-none focus:ring-offset-2 focus:ring-offset-[#050505]",
+    "aria_labels": "Required on all icon-only buttons, tech stack icons, and social links."
+  }
+}
