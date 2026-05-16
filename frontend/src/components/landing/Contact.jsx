@@ -171,11 +171,11 @@ export default function Contact() {
                 {loading ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />
-                    Sending…
+                    Submitting…
                   </>
                 ) : (
                   <>
-                    Send Message
+                    Submit
                     <ArrowUpRight size={16} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </>
                 )}
