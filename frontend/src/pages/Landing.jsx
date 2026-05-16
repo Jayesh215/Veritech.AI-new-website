@@ -12,8 +12,10 @@ import Testimonials from "../components/landing/Testimonials";
 import Careers from "../components/landing/Careers";
 import Contact from "../components/landing/Contact";
 import Footer from "../components/landing/Footer";
+import { useVisitTracker } from "../hooks/useVisitTracker";
 
 export default function Landing() {
+  useVisitTracker("/");
   return (
     <main data-testid="landing-page" className="relative">
       <Navbar />
