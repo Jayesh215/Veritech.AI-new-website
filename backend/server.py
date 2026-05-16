@@ -318,6 +318,7 @@ async def analytics_summary(_: dict = Depends(get_current_admin)):
     )[:8]
 
     conversion_rate = (contacts_count / unique_sessions * 100) if unique_sessions else 0.0
+    conversion_rate = min(conversion_rate, 100.0)
 
     return {
         "total_visits": total_visits,
