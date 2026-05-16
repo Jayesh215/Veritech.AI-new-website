@@ -31,7 +31,12 @@ export default function Contact() {
         (form.company ? `Company: ${form.company}\n` : "") +
         (form.service ? `Service: ${form.service}\n` : "") +
         `\nMessage:\n${form.message}`;
-      const waUrl = `https://wa.me/919371838418?text=${encodeURIComponent(waText)}`;
+      const phone = "919371838418";
+      const encoded = encodeURIComponent(waText);
+      const isMobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || "");
+      const waUrl = isMobile
+        ? `whatsapp://send?phone=${phone}&text=${encoded}`
+        : `https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`;
       window.open(waUrl, "_blank", "noopener,noreferrer");
       toast.success("Saved. WhatsApp opened — tap Send to deliver your message.");
       setForm({ name: "", email: "", company: "", service: "", message: "" });
