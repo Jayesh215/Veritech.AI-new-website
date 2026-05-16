@@ -23,22 +23,7 @@ export default function Contact() {
     setLoading(true);
     try {
       await axios.post(`${API}/contact`, form);
-      // Build WhatsApp message and open wa.me link for the user to send
-      const waText =
-        `New Inquiry — Veritech.AI\n\n` +
-        `Name: ${form.name}\n` +
-        `Email: ${form.email}\n` +
-        (form.company ? `Company: ${form.company}\n` : "") +
-        (form.service ? `Service: ${form.service}\n` : "") +
-        `\nMessage:\n${form.message}`;
-      const phone = "919371838418";
-      const encoded = encodeURIComponent(waText);
-      const isMobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || "");
-      const waUrl = isMobile
-        ? `whatsapp://send?phone=${phone}&text=${encoded}`
-        : `https://web.whatsapp.com/send?phone=${phone}&text=${encoded}`;
-      window.open(waUrl, "_blank", "noopener,noreferrer");
-      toast.success("Saved. WhatsApp opened — tap Send to deliver your message.");
+      toast.success("Inquiry submitted. We'll be in touch within 24 hours.");
       setForm({ name: "", email: "", company: "", service: "", message: "" });
     } catch (err) {
       const detail = err?.response?.data?.detail || "Something went wrong. Please try again.";
