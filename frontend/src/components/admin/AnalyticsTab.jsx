@@ -11,16 +11,28 @@ function fmtDuration(seconds) {
   return `${m}m ${s}s`;
 }
 
-const tooltipStyle = {
+const darkTooltip = {
   background: "#0a0a0a",
   border: "1px solid rgba(255,255,255,0.1)",
   borderRadius: 0,
   fontSize: 12,
   fontFamily: "JetBrains Mono, monospace",
 };
+const lightTooltip = {
+  background: "#ffffff",
+  border: "1px solid rgba(0,0,0,0.1)",
+  borderRadius: 0,
+  fontSize: 12,
+  fontFamily: "JetBrains Mono, monospace",
+  color: "#18181b",
+};
 
-export default function AnalyticsTab({ summary, refreshKey }) {
+export default function AnalyticsTab({ summary, refreshKey, theme = "dark" }) {
   const [series, setSeries] = useState([]);
+  const isLight = theme === "light";
+  const axisColor = isLight ? "#71717a" : "#52525b";
+  const gridColor = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
+  const tooltipStyle = isLight ? lightTooltip : darkTooltip;
 
   useEffect(() => {
     api.get("/admin/analytics/timeseries?days=14").then((r) => setSeries(r.data.series || [])).catch(() => {});
@@ -57,9 +69,9 @@ export default function AnalyticsTab({ summary, refreshKey }) {
                     <stop offset="95%" stopColor="#F55036" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="rgba(255,255,255,0.06)" />
-                <XAxis dataKey="date" tickFormatter={(d) => d.slice(5)} stroke="#52525b" fontSize={11} />
-                <YAxis stroke="#52525b" fontSize={11} allowDecimals={false} />
+                <CartesianGrid stroke={gridColor} />
+                <XAxis dataKey="date" tickFormatter={(d) => d.slice(5)} stroke={axisColor} fontSize={11} />
+                <YAxis stroke={axisColor} fontSize={11} allowDecimals={false} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: "#F55036", strokeOpacity: 0.3 }} />
                 <Area type="monotone" dataKey="visits" stroke="#F55036" strokeWidth={2} fill="url(#gVisits)" />
                 <Area type="monotone" dataKey="unique_visitors" stroke="#FFA07A" strokeWidth={1.5} fillOpacity={0} />
@@ -97,9 +109,9 @@ export default function AnalyticsTab({ summary, refreshKey }) {
         <div style={{ width: "100%", height: 240 }}>
           <ResponsiveContainer>
             <BarChart data={series} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid stroke="rgba(255,255,255,0.06)" />
-              <XAxis dataKey="date" tickFormatter={(d) => d.slice(5)} stroke="#52525b" fontSize={11} />
-              <YAxis stroke="#52525b" fontSize={11} allowDecimals={false} />
+              <CartesianGrid stroke={gridColor} />
+              <XAxis dataKey="date" tickFormatter={(d) => d.slice(5)} stroke={axisColor} fontSize={11} />
+              <YAxis stroke={axisColor} fontSize={11} allowDecimals={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(245,80,54,0.08)" }} />
               <Bar dataKey="inquiries" fill="#F55036" />
             </BarChart>
