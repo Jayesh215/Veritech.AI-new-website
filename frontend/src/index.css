@@ -172,10 +172,13 @@ body {
   --al-text: #18181b;
   --al-text-muted: #52525b;
   --al-text-subtle: #71717a;
+  color: var(--al-text);
 }
 
 .admin-light.bg-\[\#050505\],
 .admin-light .bg-\[\#050505\] { background-color: var(--al-bg) !important; }
+.admin-light.text-\[\#F4F4F5\],
+.admin-light .text-\[\#F4F4F5\] { color: var(--al-text) !important; }
 .admin-light .bg-\[\#0a0a0a\] { background-color: var(--al-surface) !important; }
 .admin-light .bg-\[\#0c0c0c\] { background-color: var(--al-card) !important; }
 .admin-light .bg-\[\#070707\] { background-color: var(--al-card) !important; }
@@ -209,3 +212,4 @@ body {
 .admin-light .bg-black\/70 { background-color: rgba(0, 0, 0, 0.4) !important; }
 .admin-light .bg-black\/40 { background-color: rgba(0, 0, 0, 0.03) !important; }
 .admin-light .bg-black\/60 { background-color: rgba(255, 255, 255, 0.7) !important; }
+5, 255, 0.7) !important; }
