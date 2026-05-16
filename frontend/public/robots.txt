@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admindata
+Disallow: /admindata/
+
+Sitemap: https://veritech.ai/sitemap.xml
