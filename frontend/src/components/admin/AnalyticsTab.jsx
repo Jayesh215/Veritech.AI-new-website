@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../lib/api";
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
-import { Clock, Users, Eye, TrendingUp } from "lucide-react";
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { Clock, Users, Eye, TrendingUp, Calendar } from "lucide-react";
 
 function fmtDuration(seconds) {
   if (!seconds) return "0s";
@@ -27,19 +27,119 @@ const lightTooltip = {
   color: "#18181b",
 };
 
-export default function AnalyticsTab({ summary, refreshKey, theme = "dark" }) {
+const RANGE_PRESETS = [
+  { key: "today", label: "Today", days: 1, chartDays: 7 },
+  { key: "7d", label: "7 days", days: 7, chartDays: 14 },
+  { key: "30d", label: "30 days", days: 30, chartDays: 30 },
+  { key: "90d", label: "90 days", days: 90, chartDays: 90 },
+  { key: "all", label: "All time", days: null, chartDays: 30 },
+  { key: "custom", label: "Custom", days: null, chartDays: 30 },
+];
+
+function isoStartOfDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x.toISOString();
+}
+function isoEndOfDay(d) {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x.toISOString();
+}
+function todayStr() {
+  const d = new Date();
+  return d.toISOString().slice(0, 10);
+}
+function dateMinusDays(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+export default function AnalyticsTab({ summary: initialSummary, refreshKey, theme = "dark" }) {
   const [series, setSeries] = useState([]);
+  const [summary, setSummary] = useState(initialSummary);
+  const [range, setRange] = useState("7d");
+  const [customFrom, setCustomFrom] = useState(dateMinusDays(7));
+  const [customTo, setCustomTo] = useState(todayStr());
+
   const isLight = theme === "light";
   const axisColor = isLight ? "#71717a" : "#52525b";
   const gridColor = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
   const tooltipStyle = isLight ? lightTooltip : darkTooltip;
 
+  const { fromIso, toIso, chartDays } = useMemo(() => {
+    const preset = RANGE_PRESETS.find((p) => p.key === range);
+    if (range === "custom") {
+      return {
+        fromIso: isoStartOfDay(customFrom),
+        toIso: isoEndOfDay(customTo),
+        chartDays: 30,
+      };
+    }
+    if (range === "today") {
+      return { fromIso: isoStartOfDay(new Date()), toIso: isoEndOfDay(new Date()), chartDays: 7 };
+    }
+    if (range === "all" || !preset?.days) {
+      return { fromIso: null, toIso: null, chartDays: preset?.chartDays || 30 };
+    }
+    return {
+      fromIso: isoStartOfDay(dateMinusDays(preset.days - 1)),
+      toIso: isoEndOfDay(new Date()),
+      chartDays: preset.chartDays,
+    };
+  }, [range, customFrom, customTo]);
+
   useEffect(() => {
-    api.get("/admin/analytics/timeseries?days=14").then((r) => setSeries(r.data.series || [])).catch(() => {});
-  }, [refreshKey]);
+    const params = new URLSearchParams();
+    if (fromIso) params.set("from", fromIso);
+    if (toIso) params.set("to", toIso);
+    api.get(`/admin/analytics/summary${params.toString() ? `?${params}` : ""}`).then((r) => setSummary(r.data)).catch(() => {});
+    api.get(`/admin/analytics/timeseries?days=${chartDays}`).then((r) => setSeries(r.data.series || [])).catch(() => {});
+  }, [fromIso, toIso, chartDays, refreshKey]);
 
   return (
     <div data-testid="analytics-tab" className="space-y-8">
+      {/* Date Range Filters */}
+      <div className="border border-white/10 bg-[#0a0a0a] p-4 flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500 mr-2">
+          <Calendar size={12} /> Range
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {RANGE_PRESETS.map((p) => (
+            <button
+              key={p.key}
+              data-testid={`range-${p.key}`}
+              onClick={() => setRange(p.key)}
+              className={`px-3 py-1.5 text-xs font-mono uppercase tracking-[0.16em] border transition-colors ${
+                range === p.key
+                  ? "border-[#F55036] bg-[#F55036] text-black"
+                  : "border-white/15 hover:border-white/40 text-zinc-300"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {range === "custom" && (
+          <div className="flex items-center gap-2 ml-auto">
+            <input
+              type="date"
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+              className="bg-[#0c0c0c] border border-white/15 px-3 py-1.5 text-xs outline-none focus:border-[#F55036]"
+            />
+            <span className="text-zinc-500 text-xs">→</span>
+            <input
+              type="date"
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+              className="bg-[#0c0c0c] border border-white/15 px-3 py-1.5 text-xs outline-none focus:border-[#F55036]"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Secondary KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/10 border border-white/10">
         <SecondaryKpi Icon={Eye} label="Today" value={summary?.today_visits ?? "—"} />
@@ -54,7 +154,7 @@ export default function AnalyticsTab({ summary, refreshKey, theme = "dark" }) {
           <div className="flex items-center justify-between mb-6">
             <div>
               <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#F55036]">Traffic</div>
-              <h3 className="font-display text-xl tracking-tight mt-1">Visits — last 14 days</h3>
+              <h3 className="font-display text-xl tracking-tight mt-1">Visits — last {chartDays} days</h3>
             </div>
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
               {summary?.realtime_visitors ?? 0} live now
@@ -103,7 +203,7 @@ export default function AnalyticsTab({ summary, refreshKey, theme = "dark" }) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#F55036]">Conversions</div>
-            <h3 className="font-display text-xl tracking-tight mt-1">Inquiries — last 14 days</h3>
+            <h3 className="font-display text-xl tracking-tight mt-1">Inquiries — last {chartDays} days</h3>
           </div>
         </div>
         <div style={{ width: "100%", height: 240 }}>

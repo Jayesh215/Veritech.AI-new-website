@@ -13,7 +13,7 @@ import jwt as pyjwt
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Query, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.cors import CORSMiddleware
@@ -88,6 +88,11 @@ class VisitHeartbeat(BaseModel):
     session_id: str
     duration_seconds: int = 0
     path: Optional[str] = None
+
+
+class DeleteRequest(BaseModel):
+    ids: Optional[List[str]] = None
+    all: bool = False
 
 
 # -------- Auth helpers --------
@@ -256,10 +261,32 @@ async def admin_inquiries(_: dict = Depends(get_current_admin)):
     return {"items": items, "total": len(items)}
 
 
+@api_router.post("/admin/inquiries/delete")
+async def admin_inquiries_delete(payload: DeleteRequest, _: dict = Depends(get_current_admin)):
+    if payload.all:
+        res = await db.contacts.delete_many({})
+        return {"deleted": res.deleted_count, "scope": "all"}
+    if payload.ids:
+        res = await db.contacts.delete_many({"id": {"$in": payload.ids}})
+        return {"deleted": res.deleted_count, "scope": "ids"}
+    raise HTTPException(status_code=400, detail="Provide ids or all=true")
+
+
 @api_router.get("/admin/newsletter")
 async def admin_newsletter(_: dict = Depends(get_current_admin)):
     items = await db.newsletter.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
     return {"items": items, "total": len(items)}
+
+
+@api_router.post("/admin/newsletter/delete")
+async def admin_newsletter_delete(payload: DeleteRequest, _: dict = Depends(get_current_admin)):
+    if payload.all:
+        res = await db.newsletter.delete_many({})
+        return {"deleted": res.deleted_count, "scope": "all"}
+    if payload.ids:
+        res = await db.newsletter.delete_many({"id": {"$in": payload.ids}})
+        return {"deleted": res.deleted_count, "scope": "ids"}
+    raise HTTPException(status_code=400, detail="Provide ids or all=true")
 
 
 # -------- Admin: analytics --------
@@ -275,15 +302,40 @@ def _parse_dt(value) -> Optional[datetime]:
 
 
 @api_router.get("/admin/analytics/summary")
-async def analytics_summary(_: dict = Depends(get_current_admin)):
+async def analytics_summary(
+    from_: Optional[str] = Query(None, alias="from"),
+    to: Optional[str] = None,
+    _: dict = Depends(get_current_admin),
+):
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=7)
     month_start = today_start - timedelta(days=30)
     realtime_cutoff = now - timedelta(minutes=5)
 
+    # Optional date range filter
+    range_start = _parse_dt(from_) if from_ else None
+    range_end = _parse_dt(to) if to else None
+
+    def in_range(dt: Optional[datetime]) -> bool:
+        if not dt:
+            return False
+        if range_start and dt < range_start:
+            return False
+        if range_end and dt > range_end:
+            return False
+        return True
+
     visits = await db.visits.find({}, {"_id": 0}).to_list(50000)
-    contacts_count = await db.contacts.count_documents({})
+    if range_start or range_end:
+        visits = [v for v in visits if in_range(_parse_dt(v.get("started_at")))]
+        contacts_count = await db.contacts.count_documents({})
+        # Apply range to contacts as well for the conversion ratio when filtered
+        contact_docs = await db.contacts.find({}, {"_id": 0, "created_at": 1}).to_list(20000)
+        contacts_count_in_range = sum(1 for c in contact_docs if in_range(_parse_dt(c.get("created_at"))))
+    else:
+        contacts_count = await db.contacts.count_documents({})
+        contacts_count_in_range = contacts_count
     newsletter_count = await db.newsletter.count_documents({})
 
     total_visits = len(visits)
@@ -317,7 +369,7 @@ async def analytics_summary(_: dict = Depends(get_current_admin)):
         key=lambda x: x["visits"], reverse=True,
     )[:8]
 
-    conversion_rate = (contacts_count / unique_sessions * 100) if unique_sessions else 0.0
+    conversion_rate = (contacts_count_in_range / unique_sessions * 100) if unique_sessions else 0.0
     conversion_rate = min(conversion_rate, 100.0)
 
     return {
@@ -328,10 +380,12 @@ async def analytics_summary(_: dict = Depends(get_current_admin)):
         "month_visits": month_visits,
         "realtime_visitors": realtime,
         "avg_session_duration_seconds": avg_duration,
-        "total_inquiries": contacts_count,
+        "total_inquiries": contacts_count_in_range,
         "total_subscribers": newsletter_count,
         "conversion_rate_percent": round(conversion_rate, 2),
         "top_pages": top_pages,
+        "range_from": from_,
+        "range_to": to,
     }
 
 
