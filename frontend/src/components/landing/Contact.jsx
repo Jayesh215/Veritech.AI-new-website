@@ -23,7 +23,17 @@ export default function Contact() {
     setLoading(true);
     try {
       await axios.post(`${API}/contact`, form);
-      toast.success("Message sent. Our team will reach out within 24 hours.");
+      // Build WhatsApp message and open wa.me link for the user to send
+      const waText =
+        `New Inquiry — Veritech.AI\n\n` +
+        `Name: ${form.name}\n` +
+        `Email: ${form.email}\n` +
+        (form.company ? `Company: ${form.company}\n` : "") +
+        (form.service ? `Service: ${form.service}\n` : "") +
+        `\nMessage:\n${form.message}`;
+      const waUrl = `https://wa.me/919371838418?text=${encodeURIComponent(waText)}`;
+      window.open(waUrl, "_blank", "noopener,noreferrer");
+      toast.success("Saved. WhatsApp opened — tap Send to deliver your message.");
       setForm({ name: "", email: "", company: "", service: "", message: "" });
     } catch (err) {
       const detail = err?.response?.data?.detail || "Something went wrong. Please try again.";
