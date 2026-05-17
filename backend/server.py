@@ -13,8 +13,8 @@ import jwt as pyjwt
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Query, status
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Query, UploadFile, File, Form, status
+from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -137,8 +137,6 @@ class ApplicationCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
     phone: Optional[str] = Field(default=None, max_length=40)
-    linkedin: Optional[str] = Field(default=None, max_length=200)
-    resume_url: Optional[str] = Field(default=None, max_length=500)
     cover_letter: Optional[str] = Field(default=None, max_length=4000)
 
 
@@ -150,7 +148,7 @@ class Application(BaseModel):
     name: str
     email: str
     phone: Optional[str] = None
-    linkedin: Optional[str] = None
+    resume_filename: Optional[str] = None
     resume_url: Optional[str] = None
     cover_letter: Optional[str] = None
     status: str = "new"
@@ -287,15 +285,71 @@ async def get_public_job(job_id: str):
 
 
 @api_router.post("/applications", response_model=Application, status_code=201)
-async def submit_application(payload: ApplicationCreate):
-    job = await db.jobs.find_one({"id": payload.job_id}, {"_id": 0})
+async def submit_application(
+    job_id: str = Form(...),
+    name: str = Form(..., min_length=1, max_length=120),
+    email: str = Form(...),
+    phone: Optional[str] = Form(default=None),
+    cover_letter: Optional[str] = Form(default=None),
+    resume: Optional[UploadFile] = File(default=None),
+):
+    # Validate email
+    try:
+        from pydantic import TypeAdapter
+        TypeAdapter(EmailStr).validate_python(email)
+    except Exception:
+        raise HTTPException(status_code=422, detail="Please enter a valid email address.")
+
+    job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
     if not job:
         raise HTTPException(status_code=404, detail="Job not found.")
-    obj = Application(**payload.model_dump(), job_title=job.get("title"))
+
+    resume_filename = None
+    resume_url = None
+    if resume is not None and resume.filename:
+        # Validate extension
+        allowed = {".pdf", ".doc", ".docx"}
+        ext = ("." + resume.filename.rsplit(".", 1)[-1].lower()) if "." in resume.filename else ""
+        if ext not in allowed:
+            raise HTTPException(status_code=400, detail="Resume must be PDF, DOC, or DOCX.")
+        # Validate size (5 MB)
+        contents = await resume.read()
+        if len(contents) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Resume must be under 5 MB.")
+        # Save
+        uploads_dir = ROOT_DIR / "uploads" / "resumes"
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        safe_name = f"{uuid.uuid4()}{ext}"
+        with open(uploads_dir / safe_name, "wb") as f:
+            f.write(contents)
+        resume_filename = resume.filename
+        resume_url = f"/api/uploads/resumes/{safe_name}"
+
+    obj = Application(
+        job_id=job_id,
+        name=name.strip(),
+        email=email.strip(),
+        phone=(phone or None),
+        cover_letter=(cover_letter or None),
+        resume_filename=resume_filename,
+        resume_url=resume_url,
+        job_title=job.get("title"),
+    )
     doc = obj.model_dump()
     doc["created_at"] = doc["created_at"].isoformat()
     await db.applications.insert_one(doc)
     return obj
+
+
+@api_router.get("/uploads/resumes/{filename}")
+async def download_resume(filename: str, _: dict = Depends(get_current_admin)):
+    # Sanitize
+    if "/" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    path = ROOT_DIR / "uploads" / "resumes" / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(str(path), filename=filename)
 
 
 # -------- Routes: admin jobs --------
