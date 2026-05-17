@@ -109,13 +109,15 @@ export default function Footer() {
             </div>
             <div className="flex lg:flex-col gap-3">
               {[
-                { Icon: Linkedin, label: "LinkedIn", href: "#" },
+                { Icon: Linkedin, label: "LinkedIn", href: "https://www.linkedin.com/company/veritech-software-it-services-pvt-ltd/" },
                 { Icon: Twitter, label: "Twitter", href: "#" },
                 { Icon: Github, label: "Github", href: "#" },
               ].map(({ Icon, label, href }) => (
                 <a
                   key={label}
                   href={href}
+                  target={href.startsWith("http") ? "_blank" : undefined}
+                  rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
                   aria-label={label}
                   data-testid={`social-${label.toLowerCase()}`}
                   className="h-9 w-9 grid place-items-center border border-white/15 hover:border-[#F55036] hover:text-[#F55036] transition-colors"

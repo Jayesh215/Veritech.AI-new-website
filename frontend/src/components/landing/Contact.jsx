@@ -52,11 +52,11 @@ export default function Contact() {
 
             <div className="mt-10 space-y-5">
               {[
-                { Icon: Mail, label: "Email", value: "hello@veritech.ai" },
-                { Icon: Phone, label: "Phone", value: "+1 (415) 555-0142" },
-                { Icon: MapPin, label: "HQ", value: "Bengaluru · San Francisco" },
-                { Icon: Linkedin, label: "LinkedIn", value: "/company/veritech-ai" },
-                { Icon: Globe, label: "Web", value: "veritech.ai" },
+                { Icon: Mail, label: "Email", value: "hr@veritechai.net" },
+                { Icon: Phone, label: "Phone", value: "+91 (937) 183-8418" },
+                { Icon: MapPin, label: "HQ", value: "Pune, India" },
+                { Icon: Linkedin, label: "LinkedIn", value: "/company/veritech-software-it-services-pvt-ltd" },
+                { Icon: Globe, label: "Web", value: "www.veritech-ai.com" },
               ].map((c) => (
                 <div key={c.label} className="flex items-center gap-4">
                   <div className="h-9 w-9 grid place-items-center border border-white/15 bg-[#0c0c0c]">
