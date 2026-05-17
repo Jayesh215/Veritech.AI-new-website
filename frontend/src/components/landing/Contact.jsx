@@ -52,7 +52,7 @@ export default function Contact() {
 
             <div className="mt-10 space-y-5">
               {[
-                { Icon: Mail, label: "Email", value: "hr@veritechai.net" },
+                { Icon: Mail, label: "Email", value: "hr@veritech-ai.com" },
                 { Icon: Phone, label: "Phone", value: "+91 (937) 183-8418" },
                 { Icon: MapPin, label: "HQ", value: "Pune, India" },
                 { Icon: Linkedin, label: "LinkedIn", value: "/company/veritech-software-it-services-pvt-ltd" },
