@@ -95,6 +95,68 @@ class DeleteRequest(BaseModel):
     all: bool = False
 
 
+# -------- Job & Application Models --------
+class JobCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    department: str = Field(min_length=1, max_length=80)
+    type: str = Field(default="Full-time")  # Full-time | Internship | Contract | Part-time
+    location: str = Field(default="Remote", max_length=120)
+    description: str = Field(min_length=1, max_length=8000)
+    requirements: List[str] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
+    is_published: bool = True
+
+
+class JobUpdate(BaseModel):
+    title: Optional[str] = None
+    department: Optional[str] = None
+    type: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    requirements: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    is_published: Optional[bool] = None
+
+
+class Job(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    department: str
+    type: str
+    location: str
+    description: str
+    requirements: List[str] = []
+    tags: List[str] = []
+    is_published: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ApplicationCreate(BaseModel):
+    job_id: str
+    name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    phone: Optional[str] = Field(default=None, max_length=40)
+    linkedin: Optional[str] = Field(default=None, max_length=200)
+    resume_url: Optional[str] = Field(default=None, max_length=500)
+    cover_letter: Optional[str] = Field(default=None, max_length=4000)
+
+
+class Application(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    job_id: str
+    job_title: Optional[str] = None
+    name: str
+    email: str
+    phone: Optional[str] = None
+    linkedin: Optional[str] = None
+    resume_url: Optional[str] = None
+    cover_letter: Optional[str] = None
+    status: str = "new"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 # -------- Auth helpers --------
 def hash_password(pw: str) -> str:
     return bcrypt.hashpw(pw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -207,6 +269,100 @@ async def track_heartbeat(payload: VisitHeartbeat):
         upsert=False,
     )
     return {"ok": True, "matched": result.matched_count}
+
+
+# -------- Routes: jobs (public) --------
+@api_router.get("/jobs")
+async def list_public_jobs():
+    items = await db.jobs.find({"is_published": True}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return {"items": items, "total": len(items)}
+
+
+@api_router.get("/jobs/{job_id}")
+async def get_public_job(job_id: str):
+    job = await db.jobs.find_one({"id": job_id, "is_published": True}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found or not published.")
+    return job
+
+
+@api_router.post("/applications", response_model=Application, status_code=201)
+async def submit_application(payload: ApplicationCreate):
+    job = await db.jobs.find_one({"id": payload.job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    obj = Application(**payload.model_dump(), job_title=job.get("title"))
+    doc = obj.model_dump()
+    doc["created_at"] = doc["created_at"].isoformat()
+    await db.applications.insert_one(doc)
+    return obj
+
+
+# -------- Routes: admin jobs --------
+@api_router.get("/admin/jobs")
+async def admin_list_jobs(_: dict = Depends(get_current_admin)):
+    items = await db.jobs.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    # count applications per job
+    counts = {}
+    pipeline = [{"$group": {"_id": "$job_id", "count": {"$sum": 1}}}]
+    async for row in db.applications.aggregate(pipeline):
+        counts[row["_id"]] = row["count"]
+    for it in items:
+        it["application_count"] = counts.get(it["id"], 0)
+    return {"items": items, "total": len(items)}
+
+
+@api_router.post("/admin/jobs", response_model=Job, status_code=201)
+async def admin_create_job(payload: JobCreate, _: dict = Depends(get_current_admin)):
+    obj = Job(**payload.model_dump())
+    doc = obj.model_dump()
+    doc["created_at"] = doc["created_at"].isoformat()
+    await db.jobs.insert_one(doc)
+    return obj
+
+
+@api_router.patch("/admin/jobs/{job_id}")
+async def admin_update_job(job_id: str, payload: JobUpdate, _: dict = Depends(get_current_admin)):
+    update = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if not update:
+        raise HTTPException(status_code=400, detail="No fields to update.")
+    res = await db.jobs.update_one({"id": job_id}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+    return job
+
+
+@api_router.delete("/admin/jobs/{job_id}")
+async def admin_delete_job(job_id: str, _: dict = Depends(get_current_admin)):
+    res = await db.jobs.delete_one({"id": job_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    # also clean applications? Keep them for record (set job_id reference); admin can purge separately.
+    return {"deleted": 1}
+
+
+@api_router.get("/admin/jobs/{job_id}/applications")
+async def admin_job_applications(job_id: str, _: dict = Depends(get_current_admin)):
+    items = await db.applications.find({"job_id": job_id}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    return {"items": items, "total": len(items)}
+
+
+@api_router.get("/admin/applications")
+async def admin_all_applications(_: dict = Depends(get_current_admin)):
+    items = await db.applications.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    return {"items": items, "total": len(items)}
+
+
+@api_router.post("/admin/applications/delete")
+async def admin_applications_delete(payload: DeleteRequest, _: dict = Depends(get_current_admin)):
+    if payload.all:
+        res = await db.applications.delete_many({})
+        return {"deleted": res.deleted_count, "scope": "all"}
+    if payload.ids:
+        res = await db.applications.delete_many({"id": {"$in": payload.ids}})
+        return {"deleted": res.deleted_count, "scope": "ids"}
+    raise HTTPException(status_code=400, detail="Provide ids or all=true")
 
 
 # -------- Routes: auth --------
@@ -514,11 +670,100 @@ async def startup_event():
         await db.visits.create_index("session_id")
         await db.visits.create_index("started_at")
         await db.contacts.create_index("created_at")
+        await db.jobs.create_index("created_at")
+        await db.jobs.create_index("is_published")
+        await db.applications.create_index("job_id")
+        await db.applications.create_index("created_at")
     except Exception as e:
         logging.warning(f"Index creation issue: {e}")
 
     admin_email = os.environ.get("ADMIN_EMAIL", "").lower().strip()
     admin_pw = os.environ.get("ADMIN_PASSWORD", "")
+
+    # Seed default jobs if collection is empty
+    try:
+        existing_jobs = await db.jobs.count_documents({})
+        if existing_jobs == 0:
+            seed_jobs = [
+                {
+                    "id": str(uuid.uuid4()),
+                    "title": "Senior AI Engineer — LLM & RAG",
+                    "department": "AI Engineering",
+                    "type": "Full-time",
+                    "location": "Remote · India / Global",
+                    "description": "Lead the design and shipping of production-grade LLM and RAG systems for enterprise clients. You will own end-to-end architecture from data ingestion and embeddings to inference and evaluation. Work directly with founding engineers and clients on AI products that ship.",
+                    "requirements": [
+                        "5+ years of backend engineering with Python or Go",
+                        "Experience deploying LLM/RAG systems in production",
+                        "Familiarity with LangChain, vector stores (Pinecone, Weaviate, pgvector)",
+                        "Strong understanding of evaluation harnesses and observability for AI systems",
+                        "Excellent written communication for async, remote-first work",
+                    ],
+                    "tags": ["AI", "LLM", "Python", "RAG", "Remote"],
+                    "is_published": True,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                },
+                {
+                    "id": str(uuid.uuid4()),
+                    "title": "Frontend Engineer — React / Next.js",
+                    "department": "Product Engineering",
+                    "type": "Full-time",
+                    "location": "Remote · Pune (hybrid optional)",
+                    "description": "Build delightful, performant user experiences for SaaS products and AI dashboards. You will collaborate with designers and backend engineers to ship features end-to-end on tight cycles, with high quality bars.",
+                    "requirements": [
+                        "3+ years of React or Next.js production experience",
+                        "Strong CSS / Tailwind / accessibility fundamentals",
+                        "Comfort with TypeScript and modern build tools",
+                        "Eye for design polish and animation (Framer Motion a plus)",
+                        "Experience working with REST/GraphQL APIs",
+                    ],
+                    "tags": ["React", "Next.js", "TypeScript", "Tailwind", "Remote"],
+                    "is_published": True,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                },
+                {
+                    "id": str(uuid.uuid4()),
+                    "title": "DevOps Engineer — Kubernetes & AWS",
+                    "department": "Cloud Engineering",
+                    "type": "Full-time",
+                    "location": "Remote · India",
+                    "description": "Operate and scale Kubernetes platforms across client environments. You will own GitOps pipelines, observability stacks, and cost optimization at scale.",
+                    "requirements": [
+                        "4+ years of Kubernetes in production",
+                        "Strong AWS (or Azure / GCP) experience",
+                        "Terraform / Pulumi proficiency",
+                        "Hands-on with ArgoCD, Prometheus, Grafana, OpenTelemetry",
+                        "Calm under incident pressure; great communicator",
+                    ],
+                    "tags": ["DevOps", "Kubernetes", "AWS", "Terraform", "Remote"],
+                    "is_published": True,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                },
+                {
+                    "id": str(uuid.uuid4()),
+                    "title": "Data Science Intern — Predictive Modeling",
+                    "department": "Data Science",
+                    "type": "Internship",
+                    "location": "Remote · 6 months",
+                    "description": "Work alongside senior data scientists on real-world client projects spanning forecasting, recommendation, and anomaly detection. Mentored hands-on; high-converting internship-to-full-time pipeline.",
+                    "requirements": [
+                        "Final-year B.Tech / M.Tech / M.Sc in CS, Stats, or related",
+                        "Strong Python (pandas, scikit-learn, PyTorch / TensorFlow basics)",
+                        "Comfortable with SQL and exploratory data analysis",
+                        "1+ portfolio project showing end-to-end ML workflow",
+                        "Strong written communication",
+                    ],
+                    "tags": ["Internship", "Data Science", "Python", "ML"],
+                    "is_published": True,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                },
+            ]
+            await db.jobs.insert_many(seed_jobs)
+            logger = logging.getLogger(__name__)
+            logger.info(f"Seeded {len(seed_jobs)} default job openings.")
+    except Exception as e:
+        logging.warning(f"Job seed issue: {e}")
+
     if not admin_email or not admin_pw:
         logging.warning("ADMIN_EMAIL / ADMIN_PASSWORD missing — skipping admin seed.")
         return

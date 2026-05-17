@@ -5,12 +5,16 @@ import { api } from "../lib/api";
 import InquiriesTab from "../components/admin/InquiriesTab";
 import NewsletterTab from "../components/admin/NewsletterTab";
 import AnalyticsTab from "../components/admin/AnalyticsTab";
-import { LogOut, BarChart3, Inbox, Mail, RefreshCw, Sun, Moon } from "lucide-react";
+import JobsTab from "../components/admin/JobsTab";
+import ApplicationsTab from "../components/admin/ApplicationsTab";
+import { LogOut, BarChart3, Inbox, Mail, RefreshCw, Sun, Moon, Briefcase, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 
 const TABS = [
   { key: "analytics", label: "Analytics", Icon: BarChart3 },
   { key: "inquiries", label: "Inquiries", Icon: Inbox },
+  { key: "jobs", label: "Jobs", Icon: Briefcase },
+  { key: "applications", label: "Applications", Icon: UserCheck },
   { key: "newsletter", label: "Newsletter", Icon: Mail },
 ];
 
@@ -23,6 +27,7 @@ export default function AdminDashboard() {
   const [summary, setSummary] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "dark");
+  const [appsFilterJob, setAppsFilterJob] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(THEME_KEY, theme);
@@ -119,6 +124,19 @@ export default function AdminDashboard() {
 
         {tab === "analytics" && <AnalyticsTab summary={summary} refreshKey={refreshKey} theme={theme} />}
         {tab === "inquiries" && <InquiriesTab refreshKey={refreshKey} />}
+        {tab === "jobs" && (
+          <JobsTab
+            refreshKey={refreshKey}
+            onViewApplications={(job) => { setAppsFilterJob(job); setTab("applications"); }}
+          />
+        )}
+        {tab === "applications" && (
+          <ApplicationsTab
+            refreshKey={refreshKey}
+            filterJob={appsFilterJob}
+            onClearFilter={() => setAppsFilterJob(null)}
+          />
+        )}
         {tab === "newsletter" && <NewsletterTab refreshKey={refreshKey} />}
       </main>
     </div>

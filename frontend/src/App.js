@@ -2,6 +2,7 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 import Landing from "./pages/Landing";
+import CareersPage from "./pages/CareersPage";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import { AuthProvider } from "./context/AuthContext";
@@ -14,6 +15,7 @@ function App() {
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Landing />} />
+            <Route path="/careers" element={<CareersPage />} />
             <Route path="/admindata" element={<AdminLogin />} />
             <Route
               path="/admindata/dashboard"

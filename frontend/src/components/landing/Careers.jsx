@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const opps = [
   "Internships",
@@ -47,20 +48,20 @@ export default function Careers() {
               </div>
 
               <div className="mt-10 flex flex-wrap gap-4">
-                <a
-                  href="#contact"
+                <Link
+                  to="/careers"
                   data-testid="careers-apply-btn"
                   className="group inline-flex items-center gap-2 bg-[#F55036] hover:bg-[#E04830] text-black px-6 py-3.5 font-medium transition-colors"
                 >
                   Apply Now
                   <ArrowUpRight size={16} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </a>
-                <a
-                  href="#contact"
+                </Link>
+                <Link
+                  to="/careers"
                   className="inline-flex items-center gap-2 border border-white/20 hover:border-white/50 text-white px-6 py-3.5 font-medium transition-colors"
                 >
-                  Talk to recruiting
-                </a>
+                  View open roles
+                </Link>
               </div>
             </div>
 
